@@ -1,54 +1,53 @@
-var KrakenClient = require('kraken-api');
-var config = require('./config');
-
-var kraken = new KrakenClient(config.apiKey, config.privateKey);
+const kraken = require('./lib/kraken');
 
 let sell = false;
 let balance = 0;
+let priceSell = 0;
+
+const tradingPair = 'XXBTZEUR';
+const lowPrice = 1117;
+const highPrice = 1123;
+const minimumBalance = 24;
 
 function startTrade() {
-  kraken.api('Balance', null, function(error, data) {
-    if(error) {
-        console.log(error);
-    }
-    else {
-      console.log(data.result.ZEUR);
-      balance = data.result.ZEUR;
-      kraken.api('Ticker', {"pair": 'XXBTZEUR'}, function(error, data) {
-        if(error) {
-          console.log(error);
-        } else {
-          console.log(data.result.XXBTZEUR.b[0]);
-          priceSell = data.result.XXBTZEUR.b[0];
+  kraken.balance()
+    .then(balanceData => {
+      console.log(balanceData.result.ZEUR);
+      balance = balanceData.result.ZEUR;
 
-          if (balance > 24 && !sell && priceSell < 1117) {
-            kraken.api('AddOrder', {"pair": 'XXBTZEUR', "type": 'buy', "ordertype": 'market', "volume": 0.008, "oflags": 'fciq'}, function(error, data) {
-              if(error) {
-                console.log(error);
-              }
-              else {
-                console.log(data.result);
-                sell = true;
-                console.log('BUY 0.008BTC');
-                kraken.api('AddOrder', {"pair": 'XXBTZEUR', "type": 'sell', "ordertype": 'limit', "price": 1123, "volume": 0.008, "oflags": 'fciq'}, function(error, data) {
-                  if(error) {
-                    console.log(error);
-                  }
-                  else {
-                    console.log(data.result);
-                    sell = false;
-                    console.log('SELL 0.008BTC');
-                  }
-                });
-              }
-            });
-          }
-        }
+      return kraken.ticker({ pair: tradingPair });
+    })
+    .then(tickerData => {
+      console.log(tickerData.result.XXBTZEUR.b[0]);
+      priceSell = tickerData.result.XXBTZEUR.b[0];
+
+      if (balance > minimumBalance && !sell && priceSell < lowPrice) {
+        return kraken.buy({
+          pair: tradingPair,
+          volume: 0.008,
+        });
+      } else {
+        return false;
+      }
+    })
+    .then(buyData => {
+      if(!buyData) return false;
+
+      console.log(buyData.result);
+      sell = true;
+
+      return sell({
+        pair: tradingPair,
+        price: highPrice,
+        volume: 0.008,
+      }).then(sellData => {
+        console.log(sellData.result);
+        sell = false;
       });
-    }
-  });
-
-  setTimeout(startTrade, 4000);
+    })
+    .catch(console.error);
 }
+
+setTimeout(startTrade, 4000);
 
 startTrade();

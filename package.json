@@ -1,0 +1,14 @@
+
+{
+  "name": "meetup_kraken",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": { "start": "node index.js"},
+  "dependencies": {
+    "kraken-api": "0.1.7",
+    "request": "^2.79.0"
+  },
+  "author": "",
+  "license": "ISC"
+}
